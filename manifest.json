@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PageVault Single File",
   "description": "Save regular web pages as self-contained HTML files.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "action": {
     "default_title": "Save page as single HTML",
     "default_popup": "src/popup.html"

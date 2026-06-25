@@ -5,7 +5,12 @@ const DEFAULT_OPTIONS = {
   removeScripts: true,
   includeMetadata: true,
   filenameTemplate: "{title}-{date}.html",
-  autoSave: false
+  autoSave: false,
+  loadLazyContent: true,
+  preserveFormValues: true,
+  removeHiddenElements: false,
+  includeShadowRoots: true,
+  addSavedInfoBar: true
 };
 
 const form = document.querySelector("#options");
@@ -23,6 +28,11 @@ form.addEventListener("submit", async event => {
     removeScripts: data.has("removeScripts"),
     includeMetadata: data.has("includeMetadata"),
     autoSave: data.has("autoSave"),
+    loadLazyContent: data.has("loadLazyContent"),
+    preserveFormValues: data.has("preserveFormValues"),
+    removeHiddenElements: data.has("removeHiddenElements"),
+    includeShadowRoots: data.has("includeShadowRoots"),
+    addSavedInfoBar: data.has("addSavedInfoBar"),
     filenameTemplate: String(data.get("filenameTemplate") || DEFAULT_OPTIONS.filenameTemplate).trim()
   });
 

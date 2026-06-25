@@ -5,7 +5,12 @@ const DEFAULT_OPTIONS = {
   removeScripts: true,
   includeMetadata: true,
   filenameTemplate: "{title}-{date}.html",
-  autoSave: false
+  autoSave: false,
+  loadLazyContent: true,
+  preserveFormValues: true,
+  removeHiddenElements: false,
+  includeShadowRoots: true,
+  addSavedInfoBar: true
 };
 
 const MENU_IDS = {

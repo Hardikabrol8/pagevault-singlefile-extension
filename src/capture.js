@@ -6,7 +6,12 @@
     removeScripts: true,
     includeMetadata: true,
     filenameTemplate: "{title}-{date}.html",
-    autoSave: false
+    autoSave: false,
+    loadLazyContent: true,
+    preserveFormValues: true,
+    removeHiddenElements: false,
+    includeShadowRoots: true,
+    addSavedInfoBar: true
   };
 
   try {
@@ -37,15 +42,27 @@
   }
 
   PageArchiver.prototype.createArchive = async function () {
+    if (this.options.loadLazyContent && this.options.captureMode !== "selection") {
+      await this.triggerLazyLoad();
+    }
     await this.waitForFonts();
     if (!this.doc.documentElement) {
       throw new Error("This page cannot be saved because it has no document element.");
     }
 
     const clone = this.doc.documentElement.cloneNode(true);
+    if (this.options.preserveFormValues) {
+      this.preserveFormValues(clone);
+    }
+    if (this.options.includeShadowRoots) {
+      this.serializeOpenShadowRoots(clone);
+    }
     this.prepareClone(clone);
     if (this.options.captureMode === "selection") {
       this.keepSelectionOnly(clone);
+    }
+    if (this.options.removeHiddenElements) {
+      this.removeHiddenElements(clone);
     }
     if (this.options.removeScripts) {
       clone.querySelectorAll("script, noscript").forEach(node => node.remove());
@@ -63,6 +80,9 @@
     if (this.options.includeMetadata) {
       this.addMetadata(clone);
     }
+    if (this.options.addSavedInfoBar) {
+      this.addSavedInfoBar(clone);
+    }
 
     const html = `${serializeDoctype(this.doc)}\n${clone.outerHTML}`;
     return {
@@ -78,6 +98,119 @@
     if (this.doc.fonts?.ready) {
       await Promise.race([this.doc.fonts.ready, delay(1500)]);
     }
+  };
+
+  PageArchiver.prototype.triggerLazyLoad = async function () {
+    const view = this.doc.defaultView;
+    if (!view || this.doc.body?.scrollHeight <= view.innerHeight) {
+      this.normalizeLazyAttributes(this.doc);
+      return;
+    }
+
+    const startX = view.scrollX;
+    const startY = view.scrollY;
+    const maxY = Math.max(this.doc.documentElement.scrollHeight, this.doc.body?.scrollHeight || 0);
+    const step = Math.max(500, Math.floor(view.innerHeight * 0.8));
+
+    this.normalizeLazyAttributes(this.doc);
+    for (let y = 0; y < maxY; y += step) {
+      view.scrollTo(startX, y);
+      await delay(80);
+    }
+    view.scrollTo(startX, startY);
+    await delay(150);
+  };
+
+  PageArchiver.prototype.normalizeLazyAttributes = function (root) {
+    root.querySelectorAll("img, source, iframe, video").forEach(node => {
+      const dataSrc = firstAttribute(node, ["data-src", "data-original", "data-url", "data-lazy-src"]);
+      const dataSrcset = firstAttribute(node, ["data-srcset", "data-lazy-srcset"]);
+      if (dataSrc && !node.getAttribute("src")) {
+        node.setAttribute("src", dataSrc);
+      }
+      if (dataSrcset && !node.getAttribute("srcset")) {
+        node.setAttribute("srcset", dataSrcset);
+      }
+      if (node.getAttribute("loading") === "lazy") {
+        node.setAttribute("loading", "eager");
+      }
+    });
+  };
+
+  PageArchiver.prototype.preserveFormValues = function (clone) {
+    const originals = [...this.doc.querySelectorAll("input, textarea, select")];
+    const copies = [...clone.querySelectorAll("input, textarea, select")];
+
+    copies.forEach((node, index) => {
+      const original = originals[index];
+      if (!original) {
+        return;
+      }
+
+      if (node.tagName === "TEXTAREA") {
+        node.textContent = original.value;
+        return;
+      }
+
+      if (node.tagName === "SELECT") {
+        [...node.options].forEach((option, optionIndex) => {
+          option.selected = Boolean(original.options[optionIndex]?.selected);
+          if (option.selected) {
+            option.setAttribute("selected", "");
+          } else {
+            option.removeAttribute("selected");
+          }
+        });
+        return;
+      }
+
+      const type = (original.getAttribute("type") || "text").toLowerCase();
+      if (type === "checkbox" || type === "radio") {
+        node.checked = original.checked;
+        if (original.checked) {
+          node.setAttribute("checked", "");
+        } else {
+          node.removeAttribute("checked");
+        }
+      } else if (type !== "password") {
+        node.setAttribute("value", original.value);
+      }
+    });
+  };
+
+  PageArchiver.prototype.serializeOpenShadowRoots = function (clone) {
+    const originals = [...this.doc.querySelectorAll("*")];
+    const copies = [...clone.querySelectorAll("*")];
+
+    copies.forEach((node, index) => {
+      const shadowRoot = originals[index]?.shadowRoot;
+      if (!shadowRoot) {
+        return;
+      }
+
+      const template = this.doc.createElement("template");
+      template.setAttribute("shadowrootmode", shadowRoot.mode || "open");
+      template.append(shadowRoot.cloneNode(true));
+      node.prepend(template);
+      node.setAttribute("data-pagevault-shadow-root", "serialized");
+    });
+  };
+
+  PageArchiver.prototype.removeHiddenElements = function (clone) {
+    clone.querySelectorAll("[hidden], [aria-hidden='true']").forEach(node => node.remove());
+    const originals = [...this.doc.querySelectorAll("body *")];
+    const copies = [...clone.querySelectorAll("body *")];
+
+    copies.forEach((node, index) => {
+      const original = originals[index];
+      if (!original) {
+        return;
+      }
+      const style = this.doc.defaultView.getComputedStyle(original);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+        node.remove();
+      }
+    });
   };
 
   PageArchiver.prototype.prepareClone = function (clone) {
@@ -305,8 +438,30 @@
     }
     const meta = this.doc.createElement("meta");
     meta.name = "generator";
-    meta.content = `PageVault Single File 0.3.0; saved ${new Date().toISOString()} from ${this.baseUrl}`;
+    meta.content = `PageVault Single File 0.4.0; saved ${new Date().toISOString()} from ${this.baseUrl}`;
     head.append(meta);
+  };
+
+  PageArchiver.prototype.addSavedInfoBar = function (clone) {
+    const body = clone.querySelector("body");
+    if (!body) {
+      return;
+    }
+
+    const banner = this.doc.createElement("aside");
+    banner.setAttribute("data-pagevault-info", "true");
+    banner.setAttribute("style", [
+      "box-sizing:border-box",
+      "font:13px/1.4 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+      "background:#f8fafc",
+      "color:#0f172a",
+      "border-bottom:1px solid #cbd5e1",
+      "padding:8px 12px",
+      "position:relative",
+      "z-index:2147483647"
+    ].join(";"));
+    banner.textContent = `Saved by PageVault on ${new Date().toLocaleString()} from ${this.baseUrl}`;
+    body.prepend(banner);
   };
 
   function blobToDataUrl(blob) {
@@ -353,6 +508,16 @@
 
   function shouldSkipUrl(value) {
     return /^(data:|blob:|about:|javascript:|mailto:|tel:|#)/i.test(value.trim());
+  }
+
+  function firstAttribute(node, names) {
+    for (const name of names) {
+      const value = node.getAttribute(name);
+      if (value) {
+        return value;
+      }
+    }
+    return "";
   }
 
   function parseSrcset(srcset) {
