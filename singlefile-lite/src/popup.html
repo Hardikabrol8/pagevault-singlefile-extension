@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageVault</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <h1>PageVault</h1>
+      <button id="save" type="button">Save current page</button>
+      <button id="save-selection" class="secondary" type="button">Save selection</button>
+      <button id="save-all" class="secondary" type="button">Save all tabs</button>
+      <label class="toggle">
+        <input id="auto-save" type="checkbox">
+        Auto-save after page load
+      </label>
+      <p id="status" role="status" aria-live="polite">Ready.</p>
+      <button id="options" class="secondary" type="button">Options</button>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

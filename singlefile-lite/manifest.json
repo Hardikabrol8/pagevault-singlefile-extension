@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "PageVault Single File",
+  "description": "Save regular web pages as self-contained HTML files.",
+  "version": "0.3.0",
+  "action": {
+    "default_title": "Save page as single HTML",
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "options_page": "src/options.html",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "downloads",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "commands": {
+    "save-current-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Save the current page as a single HTML file"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageVault Options</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main>
+      <h1>PageVault Options</h1>
+      <form id="options">
+        <label><input type="checkbox" name="includeFrames"> Include same-origin frames</label>
+        <label><input type="checkbox" name="inlineImages"> Inline images and media</label>
+        <label><input type="checkbox" name="inlineStyles"> Inline stylesheets and CSS assets</label>
+        <label><input type="checkbox" name="removeScripts"> Remove scripts from saved pages</label>
+        <label><input type="checkbox" name="includeMetadata"> Add preservation metadata</label>
+        <label><input type="checkbox" name="autoSave"> Auto-save pages after load</label>
+        <label class="field">
+          Filename template
+          <input type="text" name="filenameTemplate" spellcheck="false">
+        </label>
+        <p class="hint">Tokens: {title}, {host}, {date}, {time}</p>
+        <button type="submit">Save options</button>
+      </form>
+      <p id="status" role="status" aria-live="polite"></p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
